@@ -6,7 +6,7 @@ class User(models.Model):
     name = models.fields.CharField(max_length=50)
     age = models.IntegerField(validators=[MinValueValidator(15)])
     
-    contacted_prefernce = models.BooleanField(default=False, 
+    contact_preference = models.BooleanField(default=False, 
         help_text="Check if the user agrees to be contacted")
     
     data_sharing = models.BooleanField(default=False, 
@@ -23,10 +23,10 @@ class Project(models.Model):
     creator = models.ForeignKey(User, on_delete=models.PROTECT, related_name='created_projects')
     name = models.CharField(max_length=200)
     description = models.TextField(max_length=1000)
-    tickets = models.ManyToManyField("Ticket", blank=True, related_name='related_ticket')
     contributor = models.ManyToManyField(User, blank=True, related_name='contributed_projects',
         verbose_name="Users registered to this project")
-    
+    created_at = models.DateTimeField(auto_now_add=True)
+
     BACKEND = 'Backend Project'
     FRONTEND = 'Frontend Project'
     IOS = 'IOS Project'
@@ -45,15 +45,13 @@ class Project(models.Model):
         choices=project_type
     )
     
-    created_at = models.DateTimeField(auto_now_add=True)
-
 
     def save(self, *args, **kwargs):
         
         super().save(*args, **kwargs)
 
         for user in self.contributor.all():
-            if not self in user.projects.all():
+            if not self in user.contributed_projects.all():
                 user.projects.add(self)
 
 
@@ -63,8 +61,8 @@ class Project(models.Model):
 
 class Ticket(models.Model):
     
-    affected_user = models.ForeignKey(User, on_delete=models.CASCADE)
-    assigned_to = models.ManyToManyField("User", blank=True, related_name="assigned_to")
+    affected_user = models.ForeignKey("User", on_delete=models.CASCADE)
+    assigned_to = models.ForeignKey("User", on_delete=models.SET_NULL, null=True, related_name="assigned_to")
     title = models.CharField(max_length=200)
     details = models.CharField(max_length=2000)
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='incidents')
