@@ -10,10 +10,7 @@ class UserSerializer(ModelSerializer):
         model = User
         fields = ['id', 'name']
 
-class TicketSerializer(ModelSerializer):
 
-    class Meta:
-        model = User
 
 class ProjectSerializer(ModelSerializer):
     class Meta:
@@ -44,7 +41,7 @@ class UserDetailSerializer(ModelSerializer):
         fields = ['id', 'name', 'age', 'contact_preference', 'data_sharing', 'contributed_projects']
 
 
-class TicketSerializer(ModelSerializer):
+class TicketDetailSerializer(ModelSerializer):
 
     affected_user = UserSerializer(read_only=True)
     assigned_to = UserSerializer(read_only=True)
@@ -55,7 +52,16 @@ class TicketSerializer(ModelSerializer):
         fields = ['id', 'affected_user', 'assigned_to', 'title', 'details', 'project', 'created_at']
 
 
+class TicketSerializer(ModelSerializer):
+
+    class Meta:
+        model = Ticket
+        fields = ['id', 'title']
+
 class CommentSerializer(ModelSerializer):
+
+    contributor = UserSerializer(read_only=True)
+    parent_ticket = TicketSerializer(read_only=True)
 
     class Meta:
         model = Comment
