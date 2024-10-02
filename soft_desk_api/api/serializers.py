@@ -11,7 +11,6 @@ class UserSerializer(ModelSerializer):
         fields = ['id', 'name']
 
 
-
 class ProjectSerializer(ModelSerializer):
     class Meta:
         model = Project
@@ -31,6 +30,7 @@ class ProjectDetailSerializer(ModelSerializer):
     def get_incidents_count(self, obj):
         # Return the count of incidents (related tickets) for the project
         return obj.incidents.count()
+
 
 class UserDetailSerializer(ModelSerializer):
     
@@ -57,6 +57,7 @@ class TicketSerializer(ModelSerializer):
     class Meta:
         model = Ticket
         fields = ['id', 'title']
+
 
 class CommentSerializer(ModelSerializer):
 

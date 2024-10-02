@@ -1,76 +1,69 @@
-from django.shortcuts import render
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.response import Response
-from .serializers import UserSerializer, UserDetailSerializer, ProjectSerializer, ProjectDetailSerializer 
-from .serializers import TicketSerializer, CommentSerializer
-from .models import User, Project, Ticket, Comment
+# Third-party imports (Django Rest Framework)
 from rest_framework import status
+from rest_framework.exceptions import NotFound
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
 
-
+# Local project imports (your serializers and models)
+from .models import Comment, Project, Ticket, User
+from .serializers import (
+    CommentSerializer, 
+    ProjectDetailSerializer, ProjectSerializer, 
+    TicketDetailSerializer, TicketSerializer, 
+    UserDetailSerializer, UserSerializer
+)
 
 
 class UserViewSet(ModelViewSet):
-    
     queryset = User.objects.all()
 
     def get_serializer_class(self):
-
+        # Dynamically return the appropriate serializer class
         if self.action == 'list':
-            return UserSerializer
-        return UserDetailSerializer
+            return UserSerializer  # Use lightweight serializer for user list
+        return UserDetailSerializer  # Use detailed serializer for other actions
     
-    def list(self,request, *args, **kwargs):
-
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-
-        return Response(serializer.data)
-    
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
-    
-
 
 class ProjectViewSet(ModelViewSet):
-
     queryset = Project.objects.all()
 
     def get_serializer_class(self):
-
+        # Dynamically return the appropriate serializer class
         if self.action == 'list':
-            return ProjectSerializer
-        return ProjectDetailSerializer
-    
-    def list(self, request, *args, **kwargs):
-
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-
-        return Response(serializer.data)
-    
-    def destroy(self, request, *args, **kwargs):
-        return super().destroy(request, *args, **kwargs)
-    
+            return ProjectSerializer  # Use simple serializer for listing projects
+        return ProjectDetailSerializer  # Use detailed serializer for other actions
 
 
 class TicketViewSet(ModelViewSet):
-    serializer_class = TicketSerializer
 
-    def get_queryset(self):
-        # Retrieve the project_id from the nested router URL (passed as 'project_pk')
-        project_id = self.kwargs.get('project_pk')
-        # Filter tickets by project_id
-        return Ticket.objects.filter(project__id=project_id)
 
-    def create(self, request, *args, **kwargs):
-        # Retrieve the project_id from the URL
+    def get_serializer_class(self):
+        # Dynamically return the appropriate serializer class
+        if self.action == 'list':
+            return TicketSerializer
+        return TicketDetailSerializer
+
+    def get_project(self):
+        # Helper method to retrieve the project from the URL and validate it
         project_id = self.kwargs.get('project_pk')
+        if not project_id:
+            raise NotFound(detail="Project ID not provided.")
         try:
-            # Get the project instance
             project = Project.objects.get(id=project_id)
         except Project.DoesNotExist:
-            return Response({"error": "Project not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+            raise NotFound(detail="Project not found.")
+        return project
+
+    def get_queryset(self):
+        # Use the helper method to get the project
+        project = self.get_project()
+        # Filter tickets by project
+        return Ticket.objects.filter(project=project)
+
+    def create(self, request, *args, **kwargs):
+        # Use the helper method to get the project
+        project = self.get_project()
+
         # Prepare ticket data and associate it with the project
         data = request.data.copy()
         data['project'] = project.id
@@ -79,36 +72,41 @@ class TicketViewSet(ModelViewSet):
         if serializer.is_valid():
             serializer.save(project=project)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
 
 
 class CommentViewSet(ModelViewSet):
     serializer_class = CommentSerializer
 
-    def get_queryset(self):
-        # Retrieve the ticket_id from the URL (nested router passes this)
+    def get_ticket(self):
+        # Retrieve the ticket ID from the URL and fetch the ticket instance
         ticket_id = self.kwargs.get('ticket_pk')
-        
-        # Filter comments based on the correct field 'parent_ticket'
-        return Comment.objects.filter(parent_ticket__id=ticket_id)
 
-    def create(self, request, *args, **kwargs):
-        # Get the ticket ID from the nested URL
-        ticket_id = self.kwargs.get('ticket_pk')
-        
+        if not ticket_id:
+            raise NotFound(detail="Ticket ID not provided.")
         try:
-            # Fetch the ticket instance
             ticket = Ticket.objects.get(id=ticket_id)
         except Ticket.DoesNotExist:
-            return Response({"error": "Ticket not found."}, status=status.HTTP_404_NOT_FOUND)
+            raise NotFound(detail="Ticket not found.")
+        return ticket
+    
+    def get_queryset(self):
+        # Use get_ticket() to get the ticket and filter comments
+        ticket = self.get_ticket()
+        return Comment.objects.filter(parent_ticket=ticket)
+
+    def create(self, request, *args, **kwargs):
+        # Use get_ticket() to get the ticket
+        ticket = self.get_ticket()
         
-        # Prepare the data and associate the comment with the correct field 'parent_ticket'
+        # Prepare the data and associate the comment with the parent ticket
         data = request.data.copy()
-        data['parent_ticket'] = ticket.id  # Use 'parent_ticket' as the foreign key field
+        data['parent_ticket'] = ticket.id  # Set the foreign key to the parent ticket
         
         serializer = self.get_serializer(data=data)
         if serializer.is_valid():
-            serializer.save(parent_ticket=ticket)  # Use 'parent_ticket' in save
+            serializer.save(parent_ticket=ticket)  # Save the comment with the parent ticket
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

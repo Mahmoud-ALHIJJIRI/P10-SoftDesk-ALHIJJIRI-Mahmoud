@@ -22,6 +22,6 @@ ticket_router.register(r'comment', CommentViewSet, basename='comment')
 # URL patterns
 urlpatterns = [
     path('', include(router.urls)),  # Include main router
-    path('', include(project_router.urls)),  # Include nested ticket routes
-    path('', include(ticket_router.urls)),
+    path('', include(project_router.urls)),  # Include nested project routes
+    path('', include(ticket_router.urls)),   # Include nested ticket routes
 ]
