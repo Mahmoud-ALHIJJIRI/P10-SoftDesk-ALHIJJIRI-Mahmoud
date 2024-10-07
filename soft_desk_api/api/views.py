@@ -32,6 +32,19 @@ class ProjectViewSet(ModelViewSet):
         if self.action == 'list':
             return ProjectSerializer  # Use simple serializer for listing projects
         return ProjectDetailSerializer  # Use detailed serializer for other actions
+    
+    def perform_create(self, serializer):
+        user = self.request.user
+        # Debugging: Check if the user is being passed correctly
+        print(f"Authenticated User: {user}")  # This should print the user's details
+        # Ensure the user is properly authenticated and is not None
+        if not user or user.is_anonymous:
+            raise ValueError("User must be authenticated to create a project.")
+        project = serializer.save(creator=user)
+        project.contributor.add(user)
+
+
+
 
 
 class TicketViewSet(ModelViewSet):

@@ -8,7 +8,7 @@ class UserSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'name']
+        fields = ['id', 'username']
 
 
 class ProjectSerializer(ModelSerializer):
@@ -21,15 +21,25 @@ class ProjectDetailSerializer(ModelSerializer):
     
     contributor = UserSerializer(many=True, read_only=True)  # 'many=True' because it's a ManyToManyField
     incidents_count = serializers.SerializerMethodField()  # Custom field to show only the number of incidents
+    creator = serializers.ReadOnlyField(source='creator.username')  # Make the creator field read-only
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'creator', 'description', 'type', 'created_at', 'incidents_count', 'contributor']
+        fields = ['id', 'name', 'creator', 'description', 'type', 'created_at', 'incidents_count', 
+                  'contributor']
 
 
     def get_incidents_count(self, obj):
         # Return the count of incidents (related tickets) for the project
         return obj.incidents.count()
+    
+    def validate_name(self, value):
+        # Normalize value to lowercase to ensure consistency in storage
+        normalized_value = value.lower()
+        if Project.objects.filter(
+            name__iexact=normalized_value).exclude(pk=getattr(self.instance, 'pk', None)).exists():
+            raise serializers.ValidationError('Project with this name already exists')
+        return normalized_value
 
 
 class UserDetailSerializer(ModelSerializer):
@@ -38,7 +48,7 @@ class UserDetailSerializer(ModelSerializer):
 
     class Meta: 
         model = User
-        fields = ['id', 'name', 'age', 'contact_preference', 'data_sharing', 'contributed_projects']
+        fields = '__all__' 
 
 
 class TicketDetailSerializer(ModelSerializer):

@@ -14,7 +14,7 @@ router.register(r'project', ProjectViewSet, basename='project')
 project_router = NestedDefaultRouter(router, r'project', lookup='project')
 project_router.register(r'ticket', TicketViewSet, basename='ticket')
 
-
+# Nested router for comments under tickets
 ticket_router = NestedDefaultRouter(project_router, r'ticket', lookup='ticket')
 ticket_router.register(r'comment', CommentViewSet, basename='comment')
 

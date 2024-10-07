@@ -1,30 +1,30 @@
 "Third-party imports (Django)"
+from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 from django.core.validators import MinValueValidator
+  
 
-class User(models.Model):
+class User(AbstractUser):
     "A model representing a user in the system."
-    name = models.fields.CharField(max_length=50)
-    age = models.IntegerField(validators=[MinValueValidator(15)])
+    age = models.IntegerField(validators=[MinValueValidator(15)], default=18)
+    contact_preference = models.BooleanField(default=False, help_text="Check if the user agrees to be contacted")
+    data_sharing = models.BooleanField(default=False, help_text="Check if the user agrees to share their data")
 
-    contact_preference = models.BooleanField(default=False,
-        help_text="Check if the user agrees to be contacted")
-
-    data_sharing = models.BooleanField(default=False,
-        help_text="Check if the user agrees to share their data")
-
+    # Add related_name attributes to avoid clashes with the default User model
+    groups = models.ManyToManyField(Group, related_name="custom_user_groups")
+    user_permissions = models.ManyToManyField(Permission, related_name="custom_user_permissions")
 
     def __str__(self):
-        return f"User ID: {self.id} - Name: {self.name}"
+        return f"User ID: {self.id} - Username: {self.username}"
 
 
 class Project(models.Model):
     "A model representing a Project in the system."
 
-    creator = models.ForeignKey(User, on_delete=models.PROTECT, related_name='created_projects')
+    creator = models.ForeignKey(User, on_delete=models.PROTECT, related_name='created_project')
     name = models.CharField(max_length=200)
     description = models.TextField(max_length=1000)
-    contributor = models.ManyToManyField(User, blank=True, related_name='contributed_projects',
+    contributor = models.ManyToManyField(User, blank=True, related_name='contributed_project',
         verbose_name="Users registered to this project")
     created_at = models.DateTimeField(auto_now_add=True)
 
