@@ -151,12 +151,12 @@ class TicketViewSet(ModelViewSet):
         contributors = project.contributor.all()  # Use a different variable name for clarity
         return contributors  # Return the list of contributor objects
     
-    def ticket_assing(self, request):
-        contributors = self.list_contributor
+    def ticket_assinge(self, request):
+        contributors = self.list_contributor()  # Call the method to get the list
         data = request.data.copy()
         assigned_to_id = data.get('assigned_to')
 
-        if  assigned_to_id is not None:
+        if assigned_to_id is not None:
             try:
                 assigned_to = User.objects.get(id=assigned_to_id)
             except User.DoesNotExist:
@@ -165,31 +165,15 @@ class TicketViewSet(ModelViewSet):
                 raise PermissionDenied(
                     'The user you are trying to assign the ticket to is not a project contributor.'
                 )
-            else:
-                assigned_to = None
             return assigned_to
         return None
-
 
     def create(self, request, *args, **kwargs):
         project = self.get_project()
         user = self.request.user
         data = request.data.copy()
-        contributors = self.list_contributor()
-        assigned_to_id = data.get('assigned_to')
+        assigned_to = self.ticket_assinge(request)
 
-        # Check if assigned_to is provided and valid
-        if assigned_to_id is not None:
-            try:
-                assigned_to = User.objects.get(id=assigned_to_id)
-            except User.DoesNotExist:
-                raise NotFound('User not found.')
-            if assigned_to not in contributors:
-                raise PermissionDenied(
-                    'The user you are trying to assign the ticket to is not a project contributor.'
-                    )
-        else:
-            assigned_to = None
 
         data['project'] = project.id
         data['affected_user'] = user.id
@@ -203,6 +187,7 @@ class TicketViewSet(ModelViewSet):
   
     def partial_update(self, request, *args, **kwargs):
         self.check_ticket_permission()
+        self.ticket_assinge(request)
         return super().partial_update(request, *args, **kwargs)
 
 class CommentViewSet(ModelViewSet):
