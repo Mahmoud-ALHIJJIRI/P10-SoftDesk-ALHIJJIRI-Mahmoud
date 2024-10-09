@@ -19,14 +19,25 @@ class ProjectSerializer(ModelSerializer):
     
 class ProjectDetailSerializer(ModelSerializer):
     
-    contributor = UserSerializer(many=True, read_only=True)  # 'many=True' because it's a ManyToManyField
+    contributor = serializers.PrimaryKeyRelatedField(many=True, queryset=User.objects.all(), write_only=True)
+    # For reading contributor details (with full user information)
+    contributors = UserSerializer(many=True, read_only=True, source='contributor')    
     incidents_count = serializers.SerializerMethodField()  # Custom field to show only the number of incidents
-    creator = serializers.ReadOnlyField(source='creator.username')  # Make the creator field read-only
+    creator = serializers.PrimaryKeyRelatedField(read_only=True)
+    creator_detail = UserSerializer(read_only=True, source='creator')
 
     class Meta:
         model = Project
-        fields = ['id', 'name', 'creator', 'description', 'type', 'created_at', 'incidents_count', 
-                  'contributor']
+        fields = ['id', 
+                  'name', 
+                  'creator', 
+                  'creator_detail', 
+                  'description', 
+                  'type', 
+                  'created_at', 
+                  'incidents_count', 
+                  'contributor', 
+                  'contributors']
 
 
     def get_incidents_count(self, obj):
@@ -40,15 +51,43 @@ class ProjectDetailSerializer(ModelSerializer):
             name__iexact=normalized_value).exclude(pk=getattr(self.instance, 'pk', None)).exists():
             raise serializers.ValidationError('Project with this name already exists')
         return normalized_value
+    
+    def update(self, instance, validated_data):
+        # Handle contributors separately to avoid overwriting
+        new_contributors = validated_data.pop('contributor', [])
+
+        # For each contributor in the new list, add them if not already a contributor
+        for contributor in new_contributors:
+            if contributor not in instance.contributor.all():
+                instance.contributor.add(contributor)  # Append new contributors
+
+        # Call the default update method for other fields
+        return super().update(instance, validated_data)
 
 
 class UserDetailSerializer(ModelSerializer):
     
-    contributed_projects = ProjectSerializer(many=True, read_only=True)
+    contributed_project = ProjectSerializer(many=True, read_only=True)
 
     class Meta: 
         model = User
-        fields = '__all__' 
+        fields = fields = [
+            'id', 
+            'username', 
+            'first_name', 
+            'last_name', 
+            'email', 
+            'age', 
+            'date_joined', 
+            'last_login',
+            'is_active', 
+            'is_staff', 
+            'is_superuser', 
+            'contact_preference', 
+            'data_sharing', 
+            'contributed_project', 
+        ]
+        read_only_fields = ['is_active']  # Ensures that is_active is only read-only
 
 
 class TicketDetailSerializer(ModelSerializer):
@@ -59,7 +98,17 @@ class TicketDetailSerializer(ModelSerializer):
 
     class Meta:
         model = Ticket
-        fields = ['id', 'affected_user', 'assigned_to', 'title', 'details', 'project', 'created_at']
+        fields = ['id', 
+                  'affected_user', 
+                  'assigned_to', 
+                  'title', 
+                  'details', 
+                  'project', 
+                  'created_at', 
+                  'priority',
+                  'status',
+                  'ticket_type',
+                  ]
 
 
 class TicketSerializer(ModelSerializer):
