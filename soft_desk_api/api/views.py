@@ -111,7 +111,6 @@ class ProjectViewSet(ModelViewSet):
 class TicketViewSet(ModelViewSet):
     queryset = Ticket.objects.all()
     permission_classes = [IsAuthenticated, IsProjectContributor]
-
     def get_serializer_class(self):
         # Dynamically return the appropriate serializer class
         if self.action == 'list':
@@ -136,7 +135,6 @@ class TicketViewSet(ModelViewSet):
         return Ticket.objects.filter(project=project)
 
     def check_ticket_permission(self):
-        project = self.get_project()
         authenticated_user = self.request.user
         ticket = self.get_object()
 
@@ -156,24 +154,25 @@ class TicketViewSet(ModelViewSet):
         data = request.data.copy()
         assigned_to_id = data.get('assigned_to')
 
-        if assigned_to_id is not None:
-            try:
-                assigned_to = User.objects.get(id=assigned_to_id)
-            except User.DoesNotExist:
-                raise NotFound('User not found')
-            if assigned_to not in contributors:
-                raise PermissionDenied(
-                    'The user you are trying to assign the ticket to is not a project contributor.'
-                )
-            return assigned_to
-        return None
+            # If 'assigned_to' is explicitly passed as None, unassign the ticket
+        if assigned_to_id in [None, '']:
+            return None
+        # Otherwise, check for a valid user
+        try:
+            assigned_to = User.objects.get(id=assigned_to_id)
+        except User.DoesNotExist:
+            raise NotFound('User not found')
+        # Ensure the user is a project contributor
+        if assigned_to not in contributors:
+            raise PermissionDenied(
+                'The user you are trying to assign the ticket to is not a project contributor.')
+        return assigned_to  # Return the assigned user
 
     def create(self, request, *args, **kwargs):
         project = self.get_project()
         user = self.request.user
         data = request.data.copy()
         assigned_to = self.ticket_assinge(request)
-
 
         data['project'] = project.id
         data['affected_user'] = user.id
@@ -183,12 +182,19 @@ class TicketViewSet(ModelViewSet):
         if serializer.is_valid():
             serializer.save(project=project, affected_user=user, assigned_to=assigned_to)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)            
-  
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
+
     def partial_update(self, request, *args, **kwargs):
         self.check_ticket_permission()
-        self.ticket_assinge(request)
+        ticket = self.get_object()
+        ticket.assigned_to = self.ticket_assinge(request)
+
+        serializer = self.get_serializer(ticket, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        
         return super().partial_update(request, *args, **kwargs)
+        
 
 class CommentViewSet(ModelViewSet):
     serializer_class = CommentSerializer

@@ -57,8 +57,14 @@ class Project(models.Model):
 class Ticket(models.Model):
     # Relationships
     affected_user = models.ForeignKey("User", on_delete=models.CASCADE)
-    assigned_to = models.ForeignKey("User", on_delete=models.SET_NULL, null=True, related_name="assigned_to")
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='incidents')
+    assigned_to = models.ForeignKey(
+        "User", 
+        on_delete=models.SET_NULL, 
+        null=True,   # Allow the database to store NULL (None in Python)
+        blank=True,  # Allow the field to be empty in forms or API submissions
+        related_name="assigned_tickets"  # 'assigned_to' is already used as the field name
+    )
 
     # Fields
     title = models.CharField(max_length=200)
