@@ -117,8 +117,13 @@ class TicketDetailSerializer(ModelSerializer):
                 if data[field_name] not in field.choices:
                     self._validated_data = {}
                     raise serializers.ValidationError({
-                        field_name: [f"\"{data[field_name]}\" is not a valid choice. Valid choices are: {', '.join(valid_choices)}."]
-                    })
+                        field_name: [
+                        (
+                            f"\"{data[field_name]}\" is not a valid choice. "
+                            f"Valid choices are: {', '.join(valid_choices)}."
+                        )
+                    ]
+                })
         return super().to_internal_value(data)
 
 class TicketSerializer(ModelSerializer):
