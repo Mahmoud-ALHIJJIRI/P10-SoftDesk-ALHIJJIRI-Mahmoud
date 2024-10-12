@@ -104,27 +104,42 @@ class TicketDetailSerializer(ModelSerializer):
                   'title', 
                   'details', 
                   'project', 
-                  'created_at', 
+                  'created_at',
                   'priority',
                   'status',
                   'ticket_type',
                   ]
-
+        
     def to_internal_value(self, data):
+    # Iterate through each field in the serializer
         for field_name, field in self.fields.items():
+            # Check if the field has choices and if it's in the incoming data
             if hasattr(field, 'choices') and field_name in data:
-                valid_choices = [str(choice) for choice in field.choices.keys()]
-                if data[field_name] not in field.choices:
-                    self._validated_data = {}
+                # Get the valid choices for this field
+                valid_choices = [str(choice) for choice in field.choices.keys()]   
+                # Check if the provided value is not one of the valid choices
+                if str(data[field_name]) not in valid_choices:
+                    # Clear any previously validated data and raise a validation error
                     raise serializers.ValidationError({
                         field_name: [
-                        (
-                            f"\"{data[field_name]}\" is not a valid choice. "
-                            f"Valid choices are: {', '.join(valid_choices)}."
-                        )
-                    ]
-                })
+                            (
+                                f"\"{data[field_name]}\" is not a valid choice. "
+                                f"Valid choices are: {', '.join(valid_choices)}."
+                            )
+                        ]
+                    })
+        # Call the parent method to continue processing other fields
         return super().to_internal_value(data)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        # If it's a PUT request, set fields to required
+        if request and request.method == 'PUT':
+            self.fields['priority'].required = True
+            self.fields['status'].required = True
+            self.fields['ticket_type'].required = True
+            self.fields['assigned_to'].required = True
 
 class TicketSerializer(ModelSerializer):
 

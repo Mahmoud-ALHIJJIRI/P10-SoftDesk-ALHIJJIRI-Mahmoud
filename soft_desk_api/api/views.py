@@ -207,7 +207,7 @@ class TicketViewSet(ModelViewSet):
         if 'assigned_to' not in request.data:
                 raise ValidationError('The following field is required: assigned_to')
     
-        serializer = self.get_serializer(ticket, data=request.data)
+        serializer = self.get_serializer(ticket, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
