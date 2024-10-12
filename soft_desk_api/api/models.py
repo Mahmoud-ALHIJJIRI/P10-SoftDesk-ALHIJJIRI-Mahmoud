@@ -6,7 +6,7 @@ from django.core.validators import MinValueValidator
 
 class User(AbstractUser):
     "A model representing a user in the system."
-    age = models.IntegerField(validators=[MinValueValidator(15)], default=18)
+    age = models.IntegerField(default=18)
     is_active = models.BooleanField(default=True)
     contact_preference = models.BooleanField(default=False, 
         help_text="Check if the user agrees to be contacted")

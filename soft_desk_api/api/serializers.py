@@ -38,8 +38,7 @@ class ProjectDetailSerializer(ModelSerializer):
                   'incidents_count', 
                   'contributor', 
                   'contributors']
-
-
+        
     def get_incidents_count(self, obj):
         # Return the count of incidents (related tickets) for the project
         return obj.incidents.count()
@@ -88,6 +87,24 @@ class UserDetailSerializer(ModelSerializer):
             'contributed_project', 
         ]
         read_only_fields = ['is_active']  # Ensures that is_active is only read-only
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        # If it's a PUT request, set fields to required
+        if request and request.method == 'PUT':
+            self.fields['username'].required = True
+            self.fields['first_name'].required = True
+            self.fields['last_name'].required = True
+            self.fields['email'].required = True
+            self.fields['age'].required = True
+            self.fields['contact_preference'].required = True
+            self.fields['data_sharing'].required = True
+
+    def validate(self, data):
+        # Check if data_sharing is True and the user is under 16 years old
+        if data.get('data_sharing') and data.get('age') < 16:
+            raise serializers.ValidationError("Users must be at least 16 years old to share data.")
+        return data
 
 
 class TicketDetailSerializer(ModelSerializer):
