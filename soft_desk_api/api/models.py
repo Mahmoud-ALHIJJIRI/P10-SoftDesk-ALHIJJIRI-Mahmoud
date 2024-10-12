@@ -62,8 +62,8 @@ class Ticket(models.Model):
         "User", 
         on_delete=models.SET_NULL, 
         null=True,   # Allow the database to store NULL (None in Python)
-        blank=True,  # Allow the field to be empty in forms or API submissions
-        related_name="assigned_tickets"  # 'assigned_to' is already used as the field name
+        related_name="assigned_tickets",
+        default=None  # 'assigned_to' is already used as the field name
     )
 
     # Fields

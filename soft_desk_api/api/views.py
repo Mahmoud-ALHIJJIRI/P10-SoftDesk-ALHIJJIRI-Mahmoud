@@ -1,6 +1,6 @@
 # Third-party imports (Django Rest Framework)
 from rest_framework import status
-from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated, BasePermission
@@ -149,30 +149,34 @@ class TicketViewSet(ModelViewSet):
         contributors = project.contributor.all()  # Use a different variable name for clarity
         return contributors  # Return the list of contributor objects
     
-    def ticket_assinge(self, request):
-        contributors = self.list_contributor()  # Call the method to get the list
+    def ticket_assigne(self, request):
+        contributors = self.list_contributor()
         data = request.data.copy()
         assigned_to_id = data.get('assigned_to')
-
-            # If 'assigned_to' is explicitly passed as None, unassign the ticket
-        if assigned_to_id in [None, '']:
-            return None
-        # Otherwise, check for a valid user
+        # If 'assigned_to' is not provided, return None (no assignment change)
+        if assigned_to_id is None:
+            return
+        # Try to convert assigned_to_id to an integer if it's provided
+        try:
+            assigned_to_id = int(assigned_to_id)
+        except (ValueError, TypeError):
+            raise ValidationError("Assigned user ID should be a valid User ID.")
+        # Check if the user with the given ID exists
         try:
             assigned_to = User.objects.get(id=assigned_to_id)
         except User.DoesNotExist:
             raise NotFound('User not found')
         # Ensure the user is a project contributor
         if assigned_to not in contributors:
-            raise PermissionDenied(
-                'The user you are trying to assign the ticket to is not a project contributor.')
-        return assigned_to  # Return the assigned user
+            raise PermissionDenied('The user you are trying to assign the ticket to is not a project contributor.')
+
+        return assigned_to
 
     def create(self, request, *args, **kwargs):
         project = self.get_project()
         user = self.request.user
         data = request.data.copy()
-        assigned_to = self.ticket_assinge(request)
+        assigned_to = self.ticket_assigne(request)
 
         data['project'] = project.id
         data['affected_user'] = user.id
@@ -187,14 +191,39 @@ class TicketViewSet(ModelViewSet):
     def partial_update(self, request, *args, **kwargs):
         self.check_ticket_permission()
         ticket = self.get_object()
-        ticket.assigned_to = self.ticket_assinge(request)
-
+        if 'assigned_to' in request.data:
+            ticket.assigned_to = self.ticket_assigne(request)
         serializer = self.get_serializer(ticket, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         
-        return super().partial_update(request, *args, **kwargs)
-        
+        return Response(serializer.data)
+            
+    def update(self, request, *args, **kwargs):
+        self.check_ticket_permission()
+        ticket = self.get_object()
+        ticket.assigned_to = self.ticket_assigne(request)
+
+        serializer = self.get_serializer(ticket, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        return Response(serializer.data)
+    
+    def destroy(self, request, *args, **kwargs):
+        # Get the object that is about to be deleted
+        instance = self.get_object()
+        # Store the ID and title (or any other relevant fields) for the response
+        object_id = instance.id
+        object_title = instance.title
+        # Call the default destroy method to delete the object
+        super().destroy(request, *args, **kwargs)
+        # Return a custom response with the ID and title
+        return Response(
+            {"message": f"Object with ID {object_id} and title '{object_title}' has been deleted."},
+            status=status.HTTP_200_OK
+        )
+
 
 class CommentViewSet(ModelViewSet):
     serializer_class = CommentSerializer
