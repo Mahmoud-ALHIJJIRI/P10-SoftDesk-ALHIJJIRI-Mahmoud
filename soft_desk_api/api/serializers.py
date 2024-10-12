@@ -110,6 +110,16 @@ class TicketDetailSerializer(ModelSerializer):
                   'ticket_type',
                   ]
 
+    def to_internal_value(self, data):
+        for field_name, field in self.fields.items():
+            if hasattr(field, 'choices') and field_name in data:
+                valid_choices = [str(choice) for choice in field.choices.keys()]
+                if data[field_name] not in field.choices:
+                    self._validated_data = {}
+                    raise serializers.ValidationError({
+                        field_name: [f"\"{data[field_name]}\" is not a valid choice. Valid choices are: {', '.join(valid_choices)}."]
+                    })
+        return super().to_internal_value(data)
 
 class TicketSerializer(ModelSerializer):
 
