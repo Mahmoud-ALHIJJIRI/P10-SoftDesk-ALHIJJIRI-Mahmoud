@@ -226,7 +226,9 @@ class TicketViewSet(ModelViewSet):
 
 
 class CommentViewSet(ModelViewSet):
+    permission_classes = [IsAuthenticated, IsProjectContributor]
     serializer_class = CommentSerializer
+
 
     def get_ticket(self):
         # Retrieve the ticket ID from the URL and fetch the ticket instance
