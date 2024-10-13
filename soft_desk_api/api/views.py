@@ -270,6 +270,13 @@ class CommentViewSet(ModelViewSet, GetProjectMixin):
 
         return ticket
 
+    def check_comment_permission(self, request):
+        comment = self.get_object()
+        authenticated_user = request.user
+
+        if comment.commenter != authenticated_user and not authenticated_user.is_superuser:
+            raise PermissionDenied('You do not have permission to modify or delete this comment.')
+
     def create(self, request, *args, **kwargs):
         # Use get_ticket() to get the ticket
         ticket = self.get_ticket()
@@ -285,4 +292,14 @@ class CommentViewSet(ModelViewSet, GetProjectMixin):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def update(self, request, *args, **kwargs):
+        self.check_comment_permission(request)
         return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        self.check_comment_permission(request)
+        comment = self.get_object()
+        comment_id = comment.id
+        super().destroy(request, *args, **kwargs)
+        return Response(
+            {"message": f"Object with ID {comment_id} has been deleted."}
+        )
