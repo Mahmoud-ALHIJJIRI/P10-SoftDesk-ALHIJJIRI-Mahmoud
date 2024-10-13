@@ -30,7 +30,20 @@ class IsProjectContributor(BasePermission):
         # Otherwise, deny permission
         raise PermissionDenied('You do not have permission to do this action')
 
+class GetProjectMixin:
+
+    def get_project(self):
+        # Helper method to retrieve the project from the URL and validate it
+        project_id = self.kwargs.get('project_pk')
+        if not project_id:
+            raise NotFound(detail="Project ID not provided.")
+        try:
+            project = Project.objects.get(id=project_id)
+        except Project.DoesNotExist:
+            raise NotFound(detail="Project not found.")
+        return project
       
+
 class UserViewSet(ModelViewSet):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
@@ -108,7 +121,7 @@ class ProjectViewSet(ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
-class TicketViewSet(ModelViewSet):
+class TicketViewSet(ModelViewSet, GetProjectMixin):
     queryset = Ticket.objects.all()
     permission_classes = [IsAuthenticated, IsProjectContributor]
     def get_serializer_class(self):
@@ -116,17 +129,6 @@ class TicketViewSet(ModelViewSet):
         if self.action == 'list':
             return TicketSerializer
         return TicketDetailSerializer
-
-    def get_project(self):
-        # Helper method to retrieve the project from the URL and validate it
-        project_id = self.kwargs.get('project_pk')
-        if not project_id:
-            raise NotFound(detail="Project ID not provided.")
-        try:
-            project = Project.objects.get(id=project_id)
-        except Project.DoesNotExist:
-            raise NotFound(detail="Project not found.")
-        return project
 
     def get_queryset(self):
         # Use the helper method to get the project
