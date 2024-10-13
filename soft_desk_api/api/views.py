@@ -191,8 +191,16 @@ class TicketViewSet(ModelViewSet, GetProjectMixin):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
 
     def partial_update(self, request, *args, **kwargs):
-        self.check_ticket_permission()
+        contributors = self.list_contributor()  
         ticket = self.get_object()
+
+        if 'status' in request.data:
+        # Compare by user ID to avoid object comparison issues
+            if not contributors.filter(id=request.user.id).exists():
+                raise ValidationError('You do not have permission to update the status of this ticket')
+        else:
+            self.check_ticket_permission()
+
         if 'assigned_to' in request.data:
             ticket.assigned_to = self.ticket_assigne(request)
         serializer = self.get_serializer(ticket, data=request.data, partial=True)
