@@ -6,7 +6,7 @@ from django.contrib.auth.hashers import make_password
 
 
 class CommentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'contributor', 'parent_ticket', 'created_at')
+    list_display = ('id', 'commenter', 'parent_ticket', 'created_at', 'project',)
 
 
 class TicketAdmin(admin.ModelAdmin):

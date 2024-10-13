@@ -129,19 +129,20 @@ class Ticket(models.Model):
 class Comment(models.Model):
     "A model representing a Comment in the system."
 
-    contributor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    contributor_name = models.CharField(max_length=200, blank=True, null=True, editable=False)
+    commenter = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    commenter_username = models.CharField(max_length=200, blank=True, null=True, editable=False)
     text = models.CharField(max_length=500)
-    parent_ticket = models.ForeignKey("Ticket", on_delete=models.CASCADE)
+    parent_ticket = models.ForeignKey("Ticket", on_delete=models.CASCADE, related_name='comments')
     created_at = models.DateTimeField(auto_now_add=True)
-    
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='comments')
+
 
     def save(self, *args, **kwargs):
-        if not self.contributor_name and self.contributor:
-            self.contributor_name = self.contributor.name
+        if not self.commenter_username and self.commenter:
+            self.commenter_username = self.commenter.username
 
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Comment by {self.contributor_name if self.contributor_name else 'Unknown'}"
+        return f"Comment by {self.commenter_username if self.commenter_username else 'Unknown'}"
     

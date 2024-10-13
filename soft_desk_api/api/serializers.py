@@ -158,6 +158,7 @@ class TicketDetailSerializer(ModelSerializer):
             self.fields['ticket_type'].required = True
             self.fields['assigned_to'].required = True
 
+
 class TicketSerializer(ModelSerializer):
 
     class Meta:
@@ -167,9 +168,10 @@ class TicketSerializer(ModelSerializer):
 
 class CommentSerializer(ModelSerializer):
 
-    contributor = UserSerializer(read_only=True)
+    commenter = UserSerializer(read_only=True)
     parent_ticket = TicketSerializer(read_only=True)
+    project = ProjectSerializer(read_only=True)
 
     class Meta:
         model = Comment
-        fields = ['id', 'contributor', 'text', 'parent_ticket', 'created_at']
+        fields = ['id', 'text', 'commenter', 'parent_ticket', 'project', 'created_at']

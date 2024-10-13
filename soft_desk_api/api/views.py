@@ -230,39 +230,59 @@ class TicketViewSet(ModelViewSet, GetProjectMixin):
         )
 
 
-class CommentViewSet(ModelViewSet):
+class CommentViewSet(ModelViewSet, GetProjectMixin):
+    queryset = Comment.objects.all()
     permission_classes = [IsAuthenticated, IsProjectContributor]
     serializer_class = CommentSerializer
-
-
-    def get_ticket(self):
-        # Retrieve the ticket ID from the URL and fetch the ticket instance
-        ticket_id = self.kwargs.get('ticket_pk')
-
-        if not ticket_id:
-            raise NotFound(detail="Ticket ID not provided.")
-        try:
-            ticket = Ticket.objects.get(id=ticket_id)
-        except Ticket.DoesNotExist:
-            raise NotFound(detail="Ticket not found.")
-        return ticket
     
     def get_queryset(self):
         # Use get_ticket() to get the ticket and filter comments
         ticket = self.get_ticket()
         return Comment.objects.filter(parent_ticket=ticket)
+    
+    def check_comment_permission(self):
+        authenticated_user = self.request.user
+        comment = self.get_object()
+
+        if not any([
+            comment.commenter == authenticated_user,
+            authenticated_user.is_superuser
+            ]):
+            raise PermissionDenied('You do not have permission to modify or delete this comment')
+
+    def get_ticket(self):
+        project = self.get_project()
+        ticket_id = self.kwargs.get('ticket_pk')
+        # Check if ticket_id is a valid number
+        if not ticket_id.isdigit():
+            raise ValidationError(
+                detail="Invalid Ticket ID format. Ticket ID must be a number.", 
+                code=status.HTTP_400_BAD_REQUEST
+                )
+        # Retrieve the ticket and ensure it belongs to the correct project
+        try:
+            ticket = Ticket.objects.get(id=ticket_id, project=project)
+        except Ticket.DoesNotExist:
+            raise ValidationError(
+                detail="Ticket not found for the specified project.", 
+                code=status.HTTP_404_NOT_FOUND
+                )
+
+        return ticket
 
     def create(self, request, *args, **kwargs):
         # Use get_ticket() to get the ticket
         ticket = self.get_ticket()
-        
-        # Prepare the data and associate the comment with the parent ticket
+        project = self.get_project()
+        user = self.request.user
         data = request.data.copy()
-        data['parent_ticket'] = ticket.id  # Set the foreign key to the parent ticket
-        
+
         serializer = self.get_serializer(data=data)
         if serializer.is_valid():
-            serializer.save(parent_ticket=ticket)  # Save the comment with the parent ticket
+            serializer.save(parent_ticket=ticket, project=project, commenter=user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
