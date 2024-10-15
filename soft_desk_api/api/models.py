@@ -9,7 +9,7 @@ from django.db import models
 class User(AbstractUser):
     # Custom user model extending AbstractUser
     # Age field to store the user's age
-    age = models.IntegerField()
+    age = models.IntegerField(null=True)
     # Boolean field indicating if the user is active
     is_active = models.BooleanField(default=True)
     # Boolean field for user's contact preference
