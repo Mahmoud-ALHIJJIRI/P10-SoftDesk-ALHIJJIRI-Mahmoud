@@ -1,15 +1,50 @@
 # Importing the uuid module to generate universally unique identifiers
 import uuid
 # Importing AbstractUser from Django's authentication system to extend the default user model
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, BaseUserManager
 # Importing models from Django to define custom model fields
 from django.db import models
-  
+
+
+# Custom user manager
+class CustomUserManager(BaseUserManager):
+    # Method to create a normal user
+    def create_user(self, username, password, **extra_fields):
+        # Check if username is provided
+        if not username:
+            raise ValueError('The Username field must be set')
+        # Check if password is provided
+        if not password:
+            raise ValueError('The Password field must be set')
+        # Create a user instance with the provided username and extra fields
+        user = self.model(username=username, **extra_fields)
+        # Set and hash the user's password
+        user.set_password(password)
+        # Save the user instance to the database
+        user.save(using=self._db)
+        # Return the created user instance
+        return user
+    
+    # Method to create a superuser (admin)
+    def create_superuser(self, username, password, **extra_fields):
+        # Set default values for superuser fields if not provided
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('age', None)  # Allow age to be optional for superuser
+        # Ensure the superuser has is_staff=True
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        # Ensure the superuser has is_superuser=True
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+        # Call create_user method to create the superuser
+        return self.create_user(username, password, **extra_fields)
+     
 
 class User(AbstractUser):
     # Custom user model extending AbstractUser
     # Age field to store the user's age
-    age = models.IntegerField(null=True)
+    age = models.IntegerField()
     # Boolean field indicating if the user is active
     is_active = models.BooleanField(default=True)
     # Boolean field for user's contact preference
