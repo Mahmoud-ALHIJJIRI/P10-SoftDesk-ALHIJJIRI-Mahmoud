@@ -113,6 +113,10 @@ class UserDetailSerializer(ModelSerializer):
             age = data['age']
         else:
             age = user_instance.age if user_instance and user_instance.age is not None else None
+        # Raise an error if age is still None (meaning it wasn't provided)
+        if age is None:
+            raise serializers.ValidationError("The age must be provided.")
+
         if age is not None and data.get('data_sharing') and age < 16:
             raise serializers.ValidationError("Users must be at least 16 years old to share data.")
         return data
