@@ -188,7 +188,7 @@ class TicketViewSet(ModelViewSet, GetProjectMixin):
         contributors = self.list_contributor()
         ticket = self.get_object()
 
-        # If the request contains 'status', check if the user is a contributor
+        # If the request contains 'status', check if the user is a project contributor
         if 'status' in request.data:
             # Check if the user is a contributor
             if not contributors.filter(id=request.user.id).exists():
